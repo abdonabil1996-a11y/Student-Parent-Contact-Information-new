@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" id="html-root">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>سجل الأسر</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&family=Cairo:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap');
+
+:root{
+  --ink:#16273D;
+  --slate:#2C4A6E;
+  --slate-light:#3E6491;
+  --brass:#B8863B;
+  --brass-light:#D9AE6B;
+  --paper:#EEF1F0;
+  --card:#FBFCFB;
+  --line:#D3DAD8;
+  --sage:#5C8A72;
+  --stamp-red:#A8483C;
+  --text:#1B2430;
+  --text-dim:#5C6773;
+}
+
+*{box-sizing:border-box;}
+
+body{
+  margin:0;
+  background:var(--paper);
+  background-image:radial-gradient(circle at 1px 1px, rgba(22,39,61,0.045) 1px, transparent 0);
+  background-size:22px 22px;
+  color:var(--text);
+  font-family:'Cairo',sans-serif;
+  min-height:100vh;
+}
+
+#app{max-width:920px;margin:0 auto;padding:0 16px 60px;}
+
+/* ===== Letterhead ===== */
+.letterhead{
+  background:linear-gradient(135deg,var(--ink) 0%,var(--slate) 100%);
+  margin:0 -16px 0;
+  padding:30px 24px 26px;
+  color:#fff;
+  position:relative;
+  overflow:hidden;
+}
+.letterhead::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:repeating-linear-gradient(135deg, rgba(255,255,255,0.035) 0 2px, transparent 2px 14px);
+  pointer-events:none;
+}
+.letterhead-inner{position:relative;display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;}
+.letterhead-left{display:flex;align-items:center;gap:14px;}
+.letterhead-badge{
+  width:52px;height:52px;flex:0 0 auto;
+  border:2px solid var(--brass-light);
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Kufi Arabic',sans-serif;
+  font-weight:700;font-size:18px;
+  color:var(--brass-light);
+  background:rgba(255,255,255,0.05);
+}
+.letterhead h1{
+  font-family:'Tajawal',sans-serif;
+  font-weight:900;
+  font-size:22px;
+  margin:0 0 4px;
+  letter-spacing:0.3px;
+}
+.letterhead p{
+  margin:0;
+  font-size:13px;
+  color:#C9D6E4;
+  font-weight:500;
+}
+
+.lang-switch{
+  position:relative;
+  display:flex;
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:20px;
+  padding:3px;
+  flex:0 0 auto;
+}
+.lang-switch button{
+  border:none;
+  background:transparent;
+  color:#C9D6E4;
+  font-family:'Cairo',sans-serif;
+  font-weight:700;
+  font-size:12.5px;
+  padding:7px 16px;
+  border-radius:16px;
+  cursor:pointer;
+  transition:background .15s ease,color .15s ease;
+}
+.lang-switch button.active{background:var(--brass-light);color:var(--ink);}
+
+/* ===== Nav tabs ===== */
+.tabs{
+  display:flex;
+  margin:0 -16px 26px;
+  background:var(--ink);
+  padding:0 16px;
+}
+.tab{
+  flex:1;
+  text-align:center;
+  padding:14px 8px;
+  font-family:'Tajawal',sans-serif;
+  font-weight:700;
+  font-size:14.5px;
+  color:#9FB2C6;
+  cursor:pointer;
+  border-bottom:3px solid transparent;
+  transition:color .15s ease, border-color .15s ease;
+  user-select:none;
+}
+.tab:hover{color:#E7EDF3;}
+.tab.active{color:#fff;border-bottom-color:var(--brass-light);}
+
+.view{display:none;animation:fadeIn .25s ease;}
+.view.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ===== Cards / sections ===== */
+.panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:22px;
+  margin-bottom:20px;
+  box-shadow:0 1px 3px rgba(22,39,61,0.06);
+}
+.panel-title{
+  font-family:'Tajawal',sans-serif;
+  font-weight:700;
+  font-size:16px;
+  color:var(--ink);
+  margin:0 0 16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.panel-title .dot{width:8px;height:8px;border-radius:50%;background:var(--brass);flex:0 0 auto;}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:12.5px;font-weight:600;color:var(--text-dim);}
+.field label .req{color:var(--stamp-red);}
+.field input,.field select,.field textarea{
+  font-family:'Cairo',sans-serif;
+  font-size:14px;
+  padding:10px 12px;
+  border:1.5px solid var(--line);
+  border-radius:7px;
+  background:#fff;
+  color:var(--text);
+  outline:none;
+  transition:border-color .15s ease;
+  width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--slate-light);}
+.field textarea{resize:vertical;min-height:44px;font-family:'Cairo',sans-serif;}
+
+.date-row{display:flex;gap:8px;}
+.date-row input{text-align:center;}
+
+/* ===== Children rows ===== */
+.children-box{margin-top:8px;}
+.child-row{
+  background:var(--paper);
+  border:1px dashed var(--line);
+  border-radius:8px;
+  padding:14px;
+  margin-bottom:12px;
+  position:relative;
+}
+.child-row-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.child-row-head span{
+  font-family:'Noto Kufi Arabic',sans-serif;
+  font-weight:600;
+  font-size:12px;
+  color:var(--slate);
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:2px 10px;
+}
+.remove-child{background:none;border:none;color:var(--stamp-red);font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Cairo',sans-serif;}
+.child-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.child-fields .field.full{grid-column:1/-1;}
+
+.add-child-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#fff;
+  border:1.5px dashed var(--slate-light);
+  color:var(--slate);
+  font-family:'Cairo',sans-serif;
+  font-weight:600;
+  font-size:13.5px;
+  padding:9px 16px;
+  border-radius:7px;
+  cursor:pointer;
+  transition:background .15s ease;
+}
+.add-child-btn:hover{background:#F1F5F8;}
+
+.actions-row{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+.btn-primary{
+  background:var(--ink);color:#fff;border:none;
+  font-family:'Tajawal',sans-serif;font-weight:700;font-size:14.5px;
+  padding:12px 28px;border-radius:7px;cursor:pointer;transition:background .15s ease;
+}
+.btn-primary:hover{background:var(--slate);}
+.btn-ghost{
+  background:transparent;color:var(--text-dim);border:1.5px solid var(--line);
+  font-family:'Cairo',sans-serif;font-weight:600;font-size:14px;
+  padding:12px 22px;border-radius:7px;cursor:pointer;
+}
+.btn-ghost:hover{background:#fff;}
+
+/* ===== Search ===== */
+.search-bar{display:flex;gap:10px;margin-bottom:18px;}
+.search-bar input{
+  flex:1;font-family:'Cairo',sans-serif;font-size:15px;
+  padding:13px 16px;border:1.5px solid var(--line);border-radius:8px;outline:none;background:#fff;
+}
+.search-bar input:focus{border-color:var(--slate-light);}
+.search-meta{font-size:12.5px;color:var(--text-dim);margin-bottom:14px;font-weight:600;}
+
+/* ===== Family (folder) card ===== */
+.family-card{
+  background:var(--card);border:1px solid var(--line);border-radius:10px;
+  margin-bottom:18px;position:relative;box-shadow:0 1px 3px rgba(22,39,61,0.06);overflow:hidden;
+}
+.family-stamp{
+  display:inline-block;
+  font-family:'Noto Kufi Arabic',sans-serif;font-weight:600;font-size:10px;color:#B9C2C0;
+  border:1px dashed #D8DEDC;border-radius:5px;padding:1px 8px;
+  letter-spacing:0.4px;margin-top:3px;
+}
+.family-head{padding:18px 20px 14px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.family-head-main h3{font-family:'Tajawal',sans-serif;font-weight:700;font-size:17px;margin:0;color:var(--ink);}
+.family-head-main .meta-line{font-size:13px;color:var(--text-dim);display:flex;gap:14px;flex-wrap:wrap;margin-top:4px;}
+.family-head-main .meta-line span{display:inline-flex;align-items:center;gap:4px;}
+.family-note{font-size:12.5px;color:var(--text-dim);font-style:italic;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);}
+.family-actions{display:flex;gap:8px;align-self:flex-start;}
+.icon-btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 10px;font-size:12.5px;cursor:pointer;color:var(--text-dim);font-family:'Cairo',sans-serif;font-weight:600;}
+.icon-btn:hover{background:var(--paper);}
+.icon-btn.danger{color:var(--stamp-red);border-color:#E4C2BD;}
+
+.children-list{padding:14px 20px 18px;}
+.children-list .child-item{
+  display:flex;justify-content:space-between;align-items:center;padding:10px 12px;
+  background:var(--paper);border-radius:7px;margin-bottom:8px;font-size:13.5px;flex-wrap:wrap;gap:6px;
+}
+.children-list .child-item:last-child{margin-bottom:0;}
+.child-item .child-name{font-weight:700;color:var(--ink);}
+.grade-badge{background:var(--slate);color:#fff;font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:20px;}
+.child-item .child-extra{color:var(--text-dim);font-size:12.5px;}
+.child-note-line{font-size:12.5px;color:var(--text-dim);font-style:italic;margin:-4px 0 8px;margin-inline-start:12px;}
+.no-children{padding:14px 20px;color:var(--text-dim);font-size:13px;font-style:italic;}
+
+/* ===== Empty / loading states ===== */
+.empty-state{text-align:center;padding:50px 20px;color:var(--text-dim);}
+.empty-state .icon{font-size:34px;margin-bottom:10px;}
+.empty-state h4{font-family:'Tajawal',sans-serif;color:var(--ink);margin:0 0 6px;font-size:16px;}
+.empty-state p{margin:0;font-size:13.5px;}
+
+.toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:#fff;padding:12px 22px;border-radius:8px;font-size:13.5px;font-weight:600;
+  opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;z-index:50;font-family:'Cairo',sans-serif;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.field-error{border-color:var(--stamp-red) !important;}
+
+@media(max-width:640px){
+  .field-grid{grid-template-columns:1fr;}
+  .child-fields{grid-template-columns:1fr;}
+  .letterhead h1{font-size:18px;}
+  .tab{font-size:12.5px;padding:12px 4px;}
+}
+
+/* ===== Login screen ===== */
+#login-screen{
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+}
+.login-box{
+  width:100%;
+  max-width:380px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  box-shadow:0 4px 18px rgba(22,39,61,0.10);
+  padding:30px 26px;
+}
+.login-badge{
+  width:52px;height:52px;margin:0 auto 14px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--ink) 0%,var(--slate) 100%);
+  border:2px solid var(--brass-light);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Noto Kufi Arabic',sans-serif;font-weight:700;font-size:18px;color:var(--brass-light);
+}
+.login-box h2{
+  font-family:'Tajawal',sans-serif;font-weight:900;font-size:19px;
+  color:var(--ink);text-align:center;margin:0 0 22px;
+}
+.login-box .field{margin-bottom:14px;}
+.login-error{
+  color:var(--stamp-red);font-size:13px;font-weight:600;
+  margin:-4px 0 12px;min-height:16px;
+}
+.login-box .btn-primary{width:100%;text-align:center;margin-top:4px;}
+.logout-btn{
+  background:transparent;border:1px solid rgba(255,255,255,0.3);color:#C9D6E4;
+  font-family:'Cairo',sans-serif;font-weight:600;font-size:12.5px;
+  padding:7px 14px;border-radius:16px;cursor:pointer;
+}
+.logout-btn:hover{background:rgba(255,255,255,0.08);}
+#app{display:none;}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-badge">سجل</div>
+    <h2 data-i18n="loginTitle">تسجيل الدخول</h2>
+    <div class="field">
+      <label data-i18n="loginUsername">اسم المستخدم</label>
+      <input type="text" id="login-username" autocomplete="username">
+    </div>
+    <div class="field">
+      <label data-i18n="loginPassword">كلمة المرور</label>
+      <input type="password" id="login-password" autocomplete="current-password">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button type="button" class="btn-primary" id="login-btn" data-i18n="loginBtn">دخول</button>
+  </div>
+</div>
+
+<div id="app">
+
+  <div class="letterhead">
+    <div class="letterhead-inner">
+      <div class="letterhead-left">
+        <div class="letterhead-badge" data-i18n="badge">سجل</div>
+        <div>
+          <h1 data-i18n="appTitle">سجل الأسر — أولياء الأمور والطلاب</h1>
+          <p data-i18n="appSubtitle">قاعدة بيانات مدرسية لإدارة بيانات الأسر والبحث عنها</p>
+        </div>
+      </div>
+      <div class="lang-switch">
+        <button type="button" id="lang-ar">AR / عربي</button>
+        <button type="button" id="lang-en" class="active">EN</button>
+        <button type="button" id="logout-btn" class="logout-btn" data-i18n="logoutBtn" style="margin-inline-start:6px;">خروج</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-view="add"><span data-i18n="tabAdd">➕ إضافة أسرة</span></div>
+    <div class="tab" data-view="search"><span data-i18n="tabSearch">🔍 البحث</span></div>
+  </div>
+
+  <!-- ============ ADD FAMILY VIEW ============ -->
+  <div class="view active" id="view-add">
+
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span><span data-i18n="panelParent">بيانات ولي الأمر</span></div>
+      <div class="field-grid">
+        <div class="field full">
+          <label><span data-i18n="labelParentName">اسم ولي الأمر</span> <span class="req">*</span></label>
+          <input type="text" id="p-name" data-i18n-ph="phParentName">
+        </div>
+        <div class="field">
+          <label><span data-i18n="labelPhone1">رقم تليفون 1</span> <span class="req">*</span></label>
+          <input type="tel" id="p-phone1" data-i18n-ph="phPhone">
+        </div>
+        <div class="field">
+          <label data-i18n="labelPhone2">رقم تليفون 2</label>
+          <input type="tel" id="p-phone2" data-i18n-ph="phPhone">
+        </div>
+        <div class="field full">
+          <label data-i18n="labelEmail">البريد الإلكتروني</label>
+          <input type="email" id="p-email" placeholder="name@example.com">
+        </div>
+        <div class="field full">
+          <label data-i18n="labelParentNotes">ملاحظات</label>
+          <textarea id="p-notes" data-i18n-ph="phParentNotes"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title"><span class="dot"></span><span data-i18n="panelChildren">بيانات الأبناء</span></div>
+      <div class="children-box" id="children-box"></div>
+      <button class="add-child-btn" id="add-child-btn" type="button" data-i18n="addChildBtn">+ إضافة طالب آخر</button>
+    </div>
+
+    <div class="actions-row">
+      <button class="btn-primary" id="save-family-btn" type="button" data-i18n="saveFamilyBtn">حفظ الأسرة</button>
+      <button class="btn-ghost" id="reset-form-btn" type="button" data-i18n="resetFormBtn">تفريغ النموذج</button>
+    </div>
+  </div>
+
+  <!-- ============ SEARCH VIEW ============ -->
+  <div class="view" id="view-search">
+    <div class="search-bar">
+      <input type="text" id="search-input" data-i18n-ph="searchPlaceholder">
+      <button type="button" id="refresh-btn" class="btn-ghost" style="white-space:nowrap;">⟳</button>
+      <button type="button" id="export-excel-btn" class="btn-ghost" style="white-space:nowrap;">⬇️ <span data-i18n="exportExcelBtn"></span></button>
+    </div>
+    <div class="search-meta" id="search-meta"></div>
+    <div id="results-box"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== i18n ===================== */
+const STRINGS = {
+  ar:{
+    badge:"سجل",
+    appTitle:"سجل الأسر — أولياء الأمور والطلاب",
+    appSubtitle:"قاعدة بيانات مدرسية لإدارة بيانات الأسر والبحث عنها",
+    tabAdd:"➕ إضافة أسرة",
+    tabSearch:"🔍 البحث",
+    panelParent:"بيانات ولي الأمر",
+    panelChildren:"بيانات الأبناء",
+    labelParentName:"اسم ولي الأمر",
+    phParentName:"مثال: منى إبراهيم السيد",
+    labelPhone1:"رقم تليفون 1",
+    labelPhone2:"رقم تليفون 2",
+    phPhone:"01xxxxxxxxx",
+    labelEmail:"البريد الإلكتروني",
+    labelParentNotes:"ملاحظات",
+    phParentNotes:"أي ملاحظات عن ولي الأمر...",
+    addChildBtn:"+ إضافة طالب آخر",
+    saveFamilyBtn:"حفظ الأسرة",
+    updateFamilyBtn:"تحديث بيانات الأسرة",
+    resetFormBtn:"تفريغ النموذج",
+    searchPlaceholder:"ابحث برقم التليفون، اسم ولي الأمر، أو اسم الطالب...",
+    childRowLabel:(n)=>`طالب رقم ${n}`,
+    removeChildBtn:"حذف هذا الطالب",
+    labelChildName:"اسم الطالب",
+    phChildName:"اسم الطالب بالكامل",
+    labelStudentId:"كود الطالب",
+    phStudentId:"مثال: 1254",
+    labelStudentEmail:"البريد الإلكتروني (تلقائي)",
+    labelChildNameEn:"اسم الطالب بالإنجليزي",
+    phChildNameEn:"Student name in English",
+    labelBirthDate:"تاريخ الميلاد",
+    phDay:"يوم",
+    phMonth:"شهر",
+    phYear:"سنة",
+    labelChildPhone:"رقم تليفون (إن وجد)",
+    phOptional:"اختياري",
+    labelGrade:"الصف الدراسي",
+    gradePlaceholder:"اختر الصف...",
+    labelChildNotes:"ملاحظات",
+    phChildNotes:"أي ملاحظات عن الطالب...",
+    toastValidation:"من فضلك اكتب اسم ولي الأمر ورقم التليفون الأول",
+    toastSaved:"تم حفظ بيانات الأسرة بنجاح",
+    toastUpdated:"تم تحديث بيانات الأسرة",
+    toastDeleted:"تم حذف الأسرة",
+    toastSaveError:"حدث خطأ أثناء الاتصال بقاعدة البيانات، تأكد من الإنترنت وحاول مرة أخرى",
+    toastRefreshed:"تم تحديث البيانات",
+    exportExcelBtn:"تصدير Excel",
+    toastExportEmpty:"لا يوجد بيانات لتصديرها",
+    toastExportDone:"تم تنزيل ملف Excel",
+    emptyNoFamiliesTitle:"لا توجد أسر مسجلة بعد",
+    emptyNoFamiliesDesc:"ابدأ بإضافة أسرة من تبويب «إضافة أسرة»",
+    emptyNoResultsTitle:"لا توجد نتائج",
+    emptyNoResultsDesc:"جرّب اسمًا أو رقم تليفون مختلف",
+    searchMetaAll:(n)=>`إجمالي الأسر المسجلة: ${n}`,
+    searchMetaResults:(m,t)=>`تم العثور على ${m} أسرة من إجمالي ${t}`,
+    editBtn:"تعديل",
+    deleteBtn:"حذف",
+    noChildrenText:"لا يوجد أبناء مسجلين لهذه الأسرة",
+    bornPrefix:"مواليد",
+    confirmDelete:(name)=>`هل تريد حذف أسرة "${name}" وكل بيانات أبنائها؟`,
+    grades:{prekg:"تمهيدي (Pre KG)",kg1:"KG1",kg2:"KG2",p1:"الصف الأول الابتدائي",p2:"الصف الثاني الابتدائي",p3:"الصف الثالث الابتدائي",p4:"الصف الرابع الابتدائي",p5:"الصف الخامس الابتدائي",p6:"الصف السادس الابتدائي",m1:"الصف الأول الإعدادي",m2:"الصف الثاني الإعدادي",m3:"الصف الثالث الإعدادي",s1:"الصف الأول الثانوي",s2:"الصف الثاني الثانوي",s3:"الصف الثالث الثانوي",s1am:"Grade 1 Secondary American",s2am:"Grade 2 Secondary American",s3am:"Grade 3 Secondary American"},
+    loginTitle:"تسجيل الدخول",
+    loginUsername:"اسم المستخدم",
+    loginPassword:"كلمة المرور",
+    loginBtn:"دخول",
+    logoutBtn:"خروج",
+    loginErrorInvalid:"اسم المستخدم أو كلمة المرور غير صحيحة",
+    loginErrorEmpty:"من فضلك اكتب اسم المستخدم وكلمة المرور",
+    loginErrorConn:"تعذر الاتصال بالخادم، حاول مرة أخرى",
+    sessionExpired:"انتهت جلستك، من فضلك سجّل الدخول مرة أخرى"
+  },
+  en:{
+    badge:"REG",
+    appTitle:"Family Records — Parents & Students",
+    appSubtitle:"A school database to manage and search family records",
+    tabAdd:"➕ Add Family",
+    tabSearch:"🔍 Search",
+    panelParent:"Parent Information",
+    panelChildren:"Children Information",
+    labelParentName:"Parent Name",
+    phParentName:"e.g. Mona Ibrahim El-Sayed",
+    labelPhone1:"Phone Number 1",
+    labelPhone2:"Phone Number 2",
+    phPhone:"01xxxxxxxxx",
+    labelEmail:"Email Address",
+    labelParentNotes:"Notes",
+    phParentNotes:"Any notes about the parent...",
+    addChildBtn:"+ Add Another Child",
+    saveFamilyBtn:"Save Family",
+    updateFamilyBtn:"Update Family",
+    resetFormBtn:"Clear Form",
+    searchPlaceholder:"Search by phone number, parent name, or child name...",
+    childRowLabel:(n)=>`Child ${n}`,
+    removeChildBtn:"Remove this child",
+    labelChildName:"Child's Name",
+    phChildName:"Full name of the child",
+    labelStudentId:"Student ID",
+    phStudentId:"e.g. 1254",
+    labelStudentEmail:"Email (auto-generated)",
+    labelChildNameEn:"Child's Name (English)",
+    phChildNameEn:"Student name in English",
+    labelBirthDate:"Date of Birth",
+    phDay:"Day",
+    phMonth:"Month",
+    phYear:"Year",
+    labelChildPhone:"Phone Number (if any)",
+    phOptional:"Optional",
+    labelGrade:"Grade",
+    gradePlaceholder:"Select grade...",
+    labelChildNotes:"Notes",
+    phChildNotes:"Any notes about the child...",
+    toastValidation:"Please enter the parent's name and first phone number",
+    toastSaved:"Family saved successfully",
+    toastUpdated:"Family updated successfully",
+    toastDeleted:"Family deleted",
+    toastSaveError:"Couldn't reach the database, check your connection and try again",
+    toastRefreshed:"Data refreshed",
+    exportExcelBtn:"Export Excel",
+    toastExportEmpty:"No data to export",
+    toastExportDone:"Excel file downloaded",
+    emptyNoFamiliesTitle:"No families registered yet",
+    emptyNoFamiliesDesc:"Start by adding a family from the “Add Family” tab",
+    emptyNoResultsTitle:"No results found",
+    emptyNoResultsDesc:"Try a different name or phone number",
+    searchMetaAll:(n)=>`Total registered families: ${n}`,
+    searchMetaResults:(m,t)=>`Found ${m} families out of ${t}`,
+    editBtn:"Edit",
+    deleteBtn:"Delete",
+    noChildrenText:"No children registered for this family",
+    bornPrefix:"Born",
+    confirmDelete:(name)=>`Delete the "${name}" family and all children records?`,
+    grades:{prekg:"Pre KG",kg1:"KG1",kg2:"KG2",p1:"Grade 1 Primary",p2:"Grade 2 Primary",p3:"Grade 3 Primary",p4:"Grade 4 Primary",p5:"Grade 5 Primary",p6:"Grade 6 Primary",m1:"Grade 1 Preparatory",m2:"Grade 2 Preparatory",m3:"Grade 3 Preparatory",s1:"Grade 1 Secondary",s2:"Grade 2 Secondary",s3:"Grade 3 Secondary",s1am:"Grade 1 Secondary American",s2am:"Grade 2 Secondary American",s3am:"Grade 3 Secondary American"},
+    loginTitle:"Login",
+    loginUsername:"Username",
+    loginPassword:"Password",
+    loginBtn:"Login",
+    logoutBtn:"Logout",
+    loginErrorInvalid:"Invalid username or password",
+    loginErrorEmpty:"Please enter your username and password",
+    loginErrorConn:"Couldn't reach the server, please try again",
+    sessionExpired:"Your session has expired, please log in again"
+  }
+};
+const GRADE_KEYS = ["prekg","kg1","kg2","p1","p2","p3","p4","p5","p6","m1","m2","m3","s1","s2","s3","s1am","s2am","s3am"];
+
+const EMAIL_DOMAIN = '@royal.edu.eg';
+
+let LANG = 'en';
+let families = [];
+let editingFamilyId = null;
+let childRowSeq = 0;
+
+function t(key){ return STRINGS[LANG][key]; }
+
+function uid(prefix){ return prefix + '-' + Date.now().toString(36) + Math.floor(Math.random()*1000); }
+
+function showToast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2200);
+}
+
+/* ===================== Storage (Google Sheets عبر Apps Script) ===================== */
+// حط هنا رابط الـ Web App اللي طلعلك بعد الـ Deploy في Google Apps Script
+// شكله: https://script.google.com/macros/s/xxxxxxxxxxxx/exec
+const API_URL = 'https://script.google.com/macros/s/AKfycbxDgS89jsd7-D2lnTc73DfH8m9yGxqM1VA8fsQBIuyKTUyNUKS1Qyrc7sP4Zygc4RencA/exec';
+
+// نفس التوكن المكتوب في كود Apps Script (SECRET_TOKEN) - لازم يتطابقوا بالظبط
+const API_TOKEN = 'mVKl7ke-Kak-a42HHw7RzDRFwfQOV7jq';
+
+function checkApiUrl(){
+  if(!API_URL || !API_URL.startsWith('https://script.google.com/macros/')){
+    throw new Error('API_URL not configured');
+  }
+}
+
+/* ===================== Session / Login ===================== */
+const SESSION_STORAGE_KEY = 'familyRecordsSession';
+
+function getSession(){
+  try{
+    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    if(!raw) return null;
+    const s = JSON.parse(raw);
+    if(!s || !s.sessionToken || !s.expiresAt) return null;
+    if(Date.now() >= s.expiresAt) { localStorage.removeItem(SESSION_STORAGE_KEY); return null; }
+    return s;
+  }catch(e){ return null; }
+}
+function saveSession(sessionToken, expiresAt, username){
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ sessionToken, expiresAt, username }));
+}
+function clearSession(){
+  localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+function sessionTokenParam(){
+  const s = getSession();
+  return s ? '&sessionToken=' + encodeURIComponent(s.sessionToken) : '';
+}
+
+async function apiLogin(username, password){
+  checkApiUrl();
+  const url = API_URL + '?action=login&token=' + encodeURIComponent(API_TOKEN)
+    + '&username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password);
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || 'login failed');
+  return data; // { ok:true, sessionToken, expiresAt, username }
+}
+
+async function apiList(){
+  checkApiUrl();
+  const res = await fetch(API_URL + '?action=list&token=' + encodeURIComponent(API_TOKEN) + sessionTokenParam());
+  const data = await res.json();
+  if(!data.ok){
+    if(data.error === 'unauthorized') forceLoginScreen();
+    throw new Error(data.error || 'load failed');
+  }
+  return data.families || [];
+}
+async function apiSaveFamily(family){
+  checkApiUrl();
+  const url = API_URL + '?action=save&token=' + encodeURIComponent(API_TOKEN) + sessionTokenParam() + '&family=' + encodeURIComponent(JSON.stringify(family));
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!data.ok){
+    if(data.error === 'unauthorized') forceLoginScreen();
+    throw new Error(data.error || 'save failed');
+  }
+}
+async function apiDeleteFamily(id){
+  checkApiUrl();
+  const url = API_URL + '?action=delete&token=' + encodeURIComponent(API_TOKEN) + sessionTokenParam() + '&id=' + encodeURIComponent(id);
+  const res = await fetch(url);
+  const data = await res.json();
+  if(!data.ok){
+    if(data.error === 'unauthorized') forceLoginScreen();
+    throw new Error(data.error || 'delete failed');
+  }
+}
+
+function forceLoginScreen(){
+  clearSession();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  const err = document.getElementById('login-error');
+  if(err) err.textContent = t('sessionExpired');
+}
+
+async function doLogin(){
+  const uEl = document.getElementById('login-username');
+  const pEl = document.getElementById('login-password');
+  const errEl = document.getElementById('login-error');
+  const username = uEl.value.trim();
+  const password = pEl.value;
+  errEl.textContent = '';
+
+  if(!username || !password){
+    errEl.textContent = t('loginErrorEmpty');
+    return;
+  }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  try{
+    const data = await apiLogin(username, password);
+    saveSession(data.sessionToken, data.expiresAt, data.username || username);
+    pEl.value = '';
+    await enterApp();
+  }catch(e){
+    errEl.textContent = (e.message === 'invalid credentials') ? t('loginErrorInvalid') : t('loginErrorConn');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function doLogout(){
+  clearSession();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+  document.getElementById('login-error').textContent = '';
+}
+
+async function enterApp(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  addChildRow();
+  await loadFamilies();
+  applyStaticI18n();
+  renderSearch();
+}
+
+async function loadFamilies(){
+  try{
+    families = await apiList();
+  }catch(e){
+    families = [];
+    showToast(t('toastSaveError'));
+  }
+}
+// بيحفظ سجل واحد بس (اللي اتعدل)، مش الجدول كله، عشان أجهزة تانية تفضل سليمة
+async function persistFamily(family){
+  try{
+    await apiSaveFamily(family);
+  }catch(e){
+    showToast(t('toastSaveError'));
+    throw e;
+  }
+}
+
+/* ===================== Language ===================== */
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(STRINGS[LANG][key]) el.textContent = STRINGS[LANG][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-ph');
+    if(STRINGS[LANG][key]) el.setAttribute('placeholder', STRINGS[LANG][key]);
+  });
+  document.getElementById('save-family-btn').textContent = editingFamilyId ? t('updateFamilyBtn') : t('saveFamilyBtn');
+}
+
+function setLanguage(lang){
+  LANG = lang;
+  const root = document.getElementById('html-root');
+  root.setAttribute('lang', lang);
+  root.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('lang-ar').classList.toggle('active', lang==='ar');
+  document.getElementById('lang-en').classList.toggle('active', lang==='en');
+  applyStaticI18n();
+  refreshAllChildRowsLabels();
+  renderSearch();
+}
+
+/* ===================== Children rows (Add form) ===================== */
+function gradeOptionsHtml(selectedKey){
+  return GRADE_KEYS.map(k => `<option value="${k}" ${k===selectedKey?'selected':''}>${t('grades')[k] || STRINGS[LANG].grades[k]}</option>`).join('');
+}
+
+function addChildRow(data){
+  data = data || {};
+  childRowSeq += 1;
+  const rowId = 'child-row-' + childRowSeq;
+  const box = document.getElementById('children-box');
+  const div = document.createElement('div');
+  div.className = 'child-row';
+  div.id = rowId;
+  div.innerHTML = `
+    <div class="child-row-head">
+      <span class="row-label">${t('childRowLabel')(box.children.length + 1)}</span>
+      <button type="button" class="remove-child" data-row="${rowId}">${t('removeChildBtn')}</button>
+    </div>
+    <div class="child-fields">
+      <div class="field full">
+        <label>${t('labelChildName')} <span class="req">*</span></label>
+        <input type="text" class="c-name" value="${data.name||''}" placeholder="${t('phChildName')}">
+      </div>
+      <div class="field full">
+        <label>${t('labelChildNameEn')}</label>
+        <input type="text" class="c-name-en" value="${data.nameEn||''}" placeholder="${t('phChildNameEn')}">
+      </div>
+      <div class="field">
+        <label>${t('labelStudentId')}</label>
+        <input type="text" class="c-student-id" value="${data.studentId||''}" placeholder="${t('phStudentId')}">
+      </div>
+      <div class="field">
+        <label>${t('labelStudentEmail')}</label>
+        <input type="text" class="c-student-email" value="${data.studentId ? data.studentId+EMAIL_DOMAIN : ''}" readonly dir="ltr" style="background:#F1F5F8;color:var(--text-dim);text-align:left;">
+      </div>
+      <div class="field full">
+        <label>${t('labelBirthDate')}</label>
+        <div class="date-row">
+          <input type="number" class="c-day" value="${data.birthDay||''}" placeholder="${t('phDay')}" min="1" max="31">
+          <input type="number" class="c-month" value="${data.birthMonth||''}" placeholder="${t('phMonth')}" min="1" max="12">
+          <input type="number" class="c-year" value="${data.birthYear||''}" placeholder="${t('phYear')}" min="1990" max="2035">
+        </div>
+      </div>
+      <div class="field">
+        <label>${t('labelChildPhone')}</label>
+        <input type="tel" class="c-phone" value="${data.phone||''}" placeholder="${t('phOptional')}">
+      </div>
+      <div class="field">
+        <label>${t('labelGrade')}</label>
+        <select class="c-grade">
+          <option value="">${t('gradePlaceholder')}</option>
+          ${gradeOptionsHtml(data.grade)}
+        </select>
+      </div>
+      <div class="field full">
+        <label>${t('labelChildNotes')}</label>
+        <textarea class="c-notes" placeholder="${t('phChildNotes')}">${data.notes||''}</textarea>
+      </div>
+    </div>
+  `;
+  box.appendChild(div);
+  div.querySelector('.c-student-id').addEventListener('input', (e)=>{
+    const val = e.target.value.trim();
+    div.querySelector('.c-student-email').value = val ? val + EMAIL_DOMAIN : '';
+  });
+  div.querySelector('.remove-child').addEventListener('click', ()=>{
+    div.remove();
+    refreshAllChildRowsLabels();
+  });
+}
+
+function refreshAllChildRowsLabels(){
+  const rows = document.querySelectorAll('#children-box .child-row');
+  rows.forEach((row, idx)=>{
+    row.querySelector('.row-label').textContent = t('childRowLabel')(idx+1);
+    row.querySelector('.remove-child').textContent = t('removeChildBtn');
+    const labels = row.querySelectorAll('.field label');
+    if(labels[0]) labels[0].firstChild.textContent = t('labelChildName') + ' ';
+    if(labels[1]) labels[1].textContent = t('labelChildNameEn');
+    if(labels[2]) labels[2].textContent = t('labelStudentId');
+    if(labels[3]) labels[3].textContent = t('labelStudentEmail');
+    if(labels[4]) labels[4].textContent = t('labelBirthDate');
+    if(labels[5]) labels[5].textContent = t('labelChildPhone');
+    if(labels[6]) labels[6].textContent = t('labelGrade');
+    if(labels[7]) labels[7].textContent = t('labelChildNotes');
+    row.querySelector('.c-name').placeholder = t('phChildName');
+    row.querySelector('.c-name-en').placeholder = t('phChildNameEn');
+    row.querySelector('.c-student-id').placeholder = t('phStudentId');
+    row.querySelector('.c-day').placeholder = t('phDay');
+    row.querySelector('.c-month').placeholder = t('phMonth');
+    row.querySelector('.c-year').placeholder = t('phYear');
+    row.querySelector('.c-phone').placeholder = t('phOptional');
+    row.querySelector('.c-notes').placeholder = t('phChildNotes');
+    const gradeSel = row.querySelector('.c-grade');
+    const currentVal = gradeSel.value;
+    gradeSel.innerHTML = `<option value="">${t('gradePlaceholder')}</option>${gradeOptionsHtml(currentVal)}`;
+  });
+}
+
+function clearChildRows(){
+  document.getElementById('children-box').innerHTML = '';
+  childRowSeq = 0;
+}
+
+function readChildRows(){
+  const rows = document.querySelectorAll('#children-box .child-row');
+  const list = [];
+  rows.forEach(row=>{
+    const name = row.querySelector('.c-name').value.trim();
+    if(!name) return;
+    const studentId = row.querySelector('.c-student-id').value.trim();
+    list.push({
+      id: uid('S'),
+      name,
+      nameEn: row.querySelector('.c-name-en').value.trim(),
+      studentId,
+      studentEmail: studentId ? studentId + EMAIL_DOMAIN : '',
+      birthDay: row.querySelector('.c-day').value.trim(),
+      birthMonth: row.querySelector('.c-month').value.trim(),
+      birthYear: row.querySelector('.c-year').value.trim(),
+      phone: row.querySelector('.c-phone').value.trim(),
+      grade: row.querySelector('.c-grade').value,
+      notes: row.querySelector('.c-notes').value.trim()
+    });
+  });
+  return list;
+}
+
+/* ===================== Save family ===================== */
+async function saveFamily(){
+  const nameEl = document.getElementById('p-name');
+  const phone1El = document.getElementById('p-phone1');
+  nameEl.classList.remove('field-error');
+  phone1El.classList.remove('field-error');
+
+  const name = nameEl.value.trim();
+  const phone1 = phone1El.value.trim();
+
+  let ok = true;
+  if(!name){ nameEl.classList.add('field-error'); ok = false; }
+  if(!phone1){ phone1El.classList.add('field-error'); ok = false; }
+  if(!ok){ showToast(t('toastValidation')); return; }
+
+  const children = readChildRows();
+
+  const familyData = {
+    id: editingFamilyId || uid('F'),
+    parentName: name,
+    phone1,
+    phone2: document.getElementById('p-phone2').value.trim(),
+    email: document.getElementById('p-email').value.trim(),
+    parentNotes: document.getElementById('p-notes').value.trim(),
+    children,
+    updatedAt: Date.now()
+  };
+
+  try{
+    await persistFamily(familyData);
+  }catch(e){
+    return; // الرسالة اتظهرت جوه persistFamily
+  }
+
+  if(editingFamilyId){
+    const idx = families.findIndex(f=>f.id===editingFamilyId);
+    if(idx>-1) families[idx] = familyData; else families.push(familyData);
+  } else {
+    families.push(familyData);
+  }
+
+  showToast(editingFamilyId ? t('toastUpdated') : t('toastSaved'));
+  editingFamilyId = null;
+  resetForm();
+  renderSearch();
+}
+
+function resetForm(){
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-phone1').value = '';
+  document.getElementById('p-phone2').value = '';
+  document.getElementById('p-email').value = '';
+  document.getElementById('p-notes').value = '';
+  clearChildRows();
+  addChildRow();
+  editingFamilyId = null;
+  document.getElementById('save-family-btn').textContent = t('saveFamilyBtn');
+}
+
+/* ===================== Edit / delete ===================== */
+function loadFamilyIntoForm(fam){
+  editingFamilyId = fam.id;
+  document.getElementById('p-name').value = fam.parentName || '';
+  document.getElementById('p-phone1').value = fam.phone1 || '';
+  document.getElementById('p-phone2').value = fam.phone2 || '';
+  document.getElementById('p-email').value = fam.email || '';
+  document.getElementById('p-notes').value = fam.parentNotes || '';
+  clearChildRows();
+  if(fam.children && fam.children.length){
+    fam.children.forEach(c=>addChildRow(c));
+  } else {
+    addChildRow();
+  }
+  document.getElementById('save-family-btn').textContent = t('updateFamilyBtn');
+  switchView('add');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function deleteFamily(id){
+  try{
+    await apiDeleteFamily(id);
+  }catch(e){
+    return; // الرسالة اتظهرت جوه apiDeleteFamily
+  }
+  families = families.filter(f=>f.id!==id);
+  showToast(t('toastDeleted'));
+  renderSearch();
+}
+
+/* ===================== Search / render ===================== */
+function familyMatches(fam, q){
+  if(!q) return true;
+  q = q.toLowerCase();
+  const inParent = (fam.parentName||'').toLowerCase().includes(q)
+    || (fam.phone1||'').includes(q)
+    || (fam.phone2||'').includes(q)
+    || (fam.email||'').toLowerCase().includes(q);
+  if(inParent) return true;
+  return (fam.children||[]).some(c =>
+    (c.name||'').toLowerCase().includes(q) || (c.nameEn||'').toLowerCase().includes(q) || (c.phone||'').includes(q)
+    || (c.studentId||'').toLowerCase().includes(q) || (c.studentEmail||'').toLowerCase().includes(q)
+  );
+}
+
+function escapeHtml(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function formatBirthDate(c){
+  if(!c.birthDay && !c.birthMonth && !c.birthYear) return '';
+  const d = c.birthDay ? String(c.birthDay).padStart(2,'0') : '--';
+  const m = c.birthMonth ? String(c.birthMonth).padStart(2,'0') : '--';
+  const y = c.birthYear || '----';
+  return `${d}/${m}/${y}`;
+}
+
+function renderFamilyCard(fam){
+  const childrenHtml = (fam.children && fam.children.length)
+    ? fam.children.map(c => {
+        const born = formatBirthDate(c);
+        const gradeLabel = c.grade ? (STRINGS[LANG].grades[c.grade] || c.grade) : '';
+        return `
+        <div class="child-item">
+          <div>
+            <span class="child-name">${escapeHtml(c.name)}</span>
+            ${c.nameEn ? `<span class="child-extra"> · ${escapeHtml(c.nameEn)}</span>` : ''}
+            ${c.studentId ? `<span class="child-extra"> · ID: ${escapeHtml(c.studentId)}</span>` : ''}
+            ${born ? `<span class="child-extra"> · ${t('bornPrefix')} ${escapeHtml(born)}</span>` : ''}
+            ${c.phone ? `<span class="child-extra"> · ${escapeHtml(c.phone)}</span>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${gradeLabel ? `<span class="grade-badge">${escapeHtml(gradeLabel)}</span>` : ''}
+          </div>
+        </div>
+        ${c.notes ? `<div class="child-note-line">📝 ${escapeHtml(c.notes)}</div>` : ''}
+      `;
+      }).join('')
+    : `<div class="no-children">${t('noChildrenText')}</div>`;
+
+  return `
+    <div class="family-card">
+      <div class="family-head">
+        <div class="family-head-main">
+          <h3>${escapeHtml(fam.parentName)}</h3>
+          <div class="family-stamp">${fam.id}</div>
+          <div class="meta-line">
+            <span>📞 ${escapeHtml(fam.phone1)}</span>
+            ${fam.phone2 ? `<span>📞 ${escapeHtml(fam.phone2)}</span>` : ''}
+            ${fam.email ? `<span>✉️ ${escapeHtml(fam.email)}</span>` : ''}
+          </div>
+          ${fam.parentNotes ? `<div class="family-note">📝 ${escapeHtml(fam.parentNotes)}</div>` : ''}
+        </div>
+        <div class="family-actions">
+          <button class="icon-btn" onclick="window.__editFamily('${fam.id}')">${t('editBtn')}</button>
+          <button class="icon-btn danger" onclick="window.__deleteFamily('${fam.id}')">${t('deleteBtn')}</button>
+        </div>
+      </div>
+      <div class="children-list">${childrenHtml}</div>
+    </div>
+  `;
+}
+
+function renderSearch(){
+  const q = document.getElementById('search-input').value.trim();
+  const box = document.getElementById('results-box');
+  const meta = document.getElementById('search-meta');
+  const matched = families.filter(f => familyMatches(f, q)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+
+  if(families.length === 0){
+    meta.textContent = '';
+    box.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🗂️</div>
+        <h4>${t('emptyNoFamiliesTitle')}</h4>
+        <p>${t('emptyNoFamiliesDesc')}</p>
+      </div>`;
+    return;
+  }
+
+  meta.textContent = q ? t('searchMetaResults')(matched.length, families.length) : t('searchMetaAll')(families.length);
+
+  if(matched.length === 0){
+    box.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔎</div>
+        <h4>${t('emptyNoResultsTitle')}</h4>
+        <p>${t('emptyNoResultsDesc')}</p>
+      </div>`;
+    return;
+  }
+
+  box.innerHTML = matched.map(renderFamilyCard).join('');
+}
+
+window.__editFamily = (id)=>{
+  const fam = families.find(f=>f.id===id);
+  if(fam) loadFamilyIntoForm(fam);
+};
+window.__deleteFamily = (id)=>{
+  const fam = families.find(f=>f.id===id);
+  if(!fam) return;
+  if(confirm(t('confirmDelete')(fam.parentName))){
+    deleteFamily(id);
+  }
+};
+
+/* ===================== Export to Excel ===================== */
+function exportToExcel(){
+  const rows = [];
+  families.forEach(fam=>{
+    (fam.children||[]).forEach(c=>{
+      rows.push({
+        'Student ID': c.studentId || '',
+        'Arabic Name': c.name || '',
+        'English Name': c.nameEn || '',
+        'Student Email': c.studentEmail || '',
+        'Mobile Number': c.phone || '',
+        'Date of Birth': formatBirthDate(c),
+        'Grade': c.grade ? (STRINGS[LANG].grades[c.grade] || c.grade) : '',
+        'Student Notes': c.notes || '',
+        'Parent Name': fam.parentName || '',
+        'Parent Phone 1': fam.phone1 || '',
+        'Parent Phone 2': fam.phone2 || '',
+        'Parent Email': fam.email || '',
+        'Parent Notes': fam.parentNotes || '',
+        'Family ID': fam.id || ''
+      });
+    });
+  });
+
+  if(rows.length === 0){
+    showToast(t('toastExportEmpty'));
+    return;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws['!cols'] = Object.keys(rows[0]).map(()=>({wch:18}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Students');
+  const dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `students-${dateStr}.xlsx`);
+  showToast(t('toastExportDone'));
+}
+
+/* ===================== Nav ===================== */
+async function switchView(view){
+  document.querySelectorAll('.tab').forEach(tb=>tb.classList.toggle('active', tb.dataset.view===view));
+  document.getElementById('view-add').classList.toggle('active', view==='add');
+  document.getElementById('view-search').classList.toggle('active', view==='search');
+  if(view==='search'){
+    await loadFamilies(); // يسحب آخر تحديث من الشيت (ممكن يكون جهاز تاني ضاف/عدل)
+    renderSearch();
+  }
+}
+
+document.querySelectorAll('.tab').forEach(tb=>{
+  tb.addEventListener('click', ()=>switchView(tb.dataset.view));
+});
+document.getElementById('add-child-btn').addEventListener('click', ()=>addChildRow());
+document.getElementById('save-family-btn').addEventListener('click', saveFamily);
+document.getElementById('reset-form-btn').addEventListener('click', resetForm);
+document.getElementById('search-input').addEventListener('input', renderSearch);
+document.getElementById('refresh-btn').addEventListener('click', async ()=>{
+  await loadFamilies();
+  renderSearch();
+  showToast(t('toastRefreshed'));
+});
+document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+document.getElementById('lang-ar').addEventListener('click', ()=>setLanguage('ar'));
+document.getElementById('lang-en').addEventListener('click', ()=>setLanguage('en'));
+document.getElementById('logout-btn').addEventListener('click', doLogout);
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('login-username').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('login-password').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+
+/* ===================== Init ===================== */
+(function init(){
+  applyStaticI18n();
+  const session = getSession();
+  if(session){
+    enterApp();
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+})();
+</script>
+
+</body>
+</html>
