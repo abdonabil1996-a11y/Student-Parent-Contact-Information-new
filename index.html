@@ -283,6 +283,11 @@ body{
 
 .field-error{border-color:var(--stamp-red) !important;}
 
+.readonly-banner{
+  background:#FBF3E4;border:1px solid var(--brass-light);color:#7A5A22;
+  font-size:13px;font-weight:600;padding:10px 14px;border-radius:8px;margin-bottom:16px;
+}
+
 @media(max-width:640px){
   .field-grid{grid-template-columns:1fr;}
   .child-fields{grid-template-columns:1fr;}
@@ -374,7 +379,7 @@ body{
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-view="add"><span data-i18n="tabAdd">➕ إضافة أسرة</span></div>
+    <div class="tab active" data-view="add" id="tab-add"><span data-i18n="tabAdd">➕ إضافة أسرة</span></div>
     <div class="tab" data-view="search"><span data-i18n="tabSearch">🔍 البحث</span></div>
   </div>
 
@@ -413,7 +418,7 @@ body{
       <button class="add-child-btn" id="add-child-btn" type="button" data-i18n="addChildBtn">+ إضافة طالب آخر</button>
     </div>
 
-    <div class="actions-row">
+    <div class="actions-row" id="add-actions-row">
       <button class="btn-primary" id="save-family-btn" type="button" data-i18n="saveFamilyBtn">حفظ الأسرة</button>
       <button class="btn-ghost" id="reset-form-btn" type="button" data-i18n="resetFormBtn">تفريغ النموذج</button>
     </div>
@@ -421,6 +426,7 @@ body{
 
   <!-- ============ SEARCH VIEW ============ -->
   <div class="view" id="view-search">
+    <div class="readonly-banner" id="readonly-banner" style="display:none;" data-i18n="readonlyBanner"></div>
     <div class="search-bar">
       <input type="text" id="search-input" data-i18n-ph="searchPlaceholder">
       <button type="button" id="refresh-btn" class="btn-ghost" style="white-space:nowrap;">⟳</button>
@@ -482,6 +488,7 @@ const STRINGS = {
     toastUpdated:"تم تحديث بيانات الأسرة",
     toastDeleted:"تم حذف الأسرة",
     toastSaveError:"حدث خطأ أثناء الاتصال بقاعدة البيانات، تأكد من الإنترنت وحاول مرة أخرى",
+    toastForbidden:"مش معاك صلاحية تعمل التعديل ده",
     toastRefreshed:"تم تحديث البيانات",
     exportExcelBtn:"تصدير Excel",
     toastExportEmpty:"لا يوجد بيانات لتصديرها",
@@ -497,6 +504,7 @@ const STRINGS = {
     noChildrenText:"لا يوجد أبناء مسجلين لهذه الأسرة",
     bornPrefix:"مواليد",
     confirmDelete:(name)=>`هل تريد حذف أسرة "${name}" وكل بيانات أبنائها؟`,
+    readonlyBanner:"وضع العرض فقط — مالكش صلاحية إضافة أو تعديل أو حذف",
     grades:{prekg:"تمهيدي (Pre KG)",kg1:"KG1",kg2:"KG2",p1:"الصف الأول الابتدائي",p2:"الصف الثاني الابتدائي",p3:"الصف الثالث الابتدائي",p4:"الصف الرابع الابتدائي",p5:"الصف الخامس الابتدائي",p6:"الصف السادس الابتدائي",m1:"الصف الأول الإعدادي",m2:"الصف الثاني الإعدادي",m3:"الصف الثالث الإعدادي",s1:"الصف الأول الثانوي",s2:"الصف الثاني الثانوي",s3:"الصف الثالث الثانوي",s1am:"Grade 1 Secondary American",s2am:"Grade 2 Secondary American",s3am:"Grade 3 Secondary American"},
     loginTitle:"تسجيل الدخول",
     loginUsername:"اسم المستخدم",
@@ -553,6 +561,7 @@ const STRINGS = {
     toastUpdated:"Family updated successfully",
     toastDeleted:"Family deleted",
     toastSaveError:"Couldn't reach the database, check your connection and try again",
+    toastForbidden:"You don't have permission to do this",
     toastRefreshed:"Data refreshed",
     exportExcelBtn:"Export Excel",
     toastExportEmpty:"No data to export",
@@ -568,6 +577,7 @@ const STRINGS = {
     noChildrenText:"No children registered for this family",
     bornPrefix:"Born",
     confirmDelete:(name)=>`Delete the "${name}" family and all children records?`,
+    readonlyBanner:"View-only mode — you don't have permission to add, edit or delete",
     grades:{prekg:"Pre KG",kg1:"KG1",kg2:"KG2",p1:"Grade 1 Primary",p2:"Grade 2 Primary",p3:"Grade 3 Primary",p4:"Grade 4 Primary",p5:"Grade 5 Primary",p6:"Grade 6 Primary",m1:"Grade 1 Preparatory",m2:"Grade 2 Preparatory",m3:"Grade 3 Preparatory",s1:"Grade 1 Secondary",s2:"Grade 2 Secondary",s3:"Grade 3 Secondary",s1am:"Grade 1 Secondary American",s2am:"Grade 2 Secondary American",s3am:"Grade 3 Secondary American"},
     loginTitle:"Login",
     loginUsername:"Username",
@@ -588,6 +598,7 @@ let LANG = 'en';
 let families = [];
 let editingFamilyId = null;
 let childRowSeq = 0;
+let currentIsAdmin = false; // بيتحدد بعد اللوجين حسب اللي راجع من السيرفر
 
 function t(key){ return STRINGS[LANG][key]; }
 
@@ -622,13 +633,15 @@ function getSession(){
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if(!raw) return null;
     const s = JSON.parse(raw);
-    if(!s || !s.sessionToken || !s.expiresAt) return null;
-    if(Date.now() >= s.expiresAt) { localStorage.removeItem(SESSION_STORAGE_KEY); return null; }
+    // السيشن دلوقتي مالهاش صلاحية بالوقت - بتفضل شغالة لحد ما يحصل logout يدوي
+    // من السيرفر (الباك اند بيشيل الصف من شيت Sessions وقتها). فبنتأكد بس إن
+    // فيه sessionToken محفوظ عندنا، من غير أي فحص لـ expiresAt.
+    if(!s || !s.sessionToken) return null;
     return s;
   }catch(e){ return null; }
 }
-function saveSession(sessionToken, expiresAt, username){
-  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ sessionToken, expiresAt, username }));
+function saveSession(sessionToken, expiresAt, username, isAdmin){
+  localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ sessionToken, expiresAt, username, isAdmin: !!isAdmin }));
 }
 function clearSession(){
   localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -645,7 +658,20 @@ async function apiLogin(username, password){
   const res = await fetch(url);
   const data = await res.json();
   if(!data.ok) throw new Error(data.error || 'login failed');
-  return data; // { ok:true, sessionToken, expiresAt, username }
+  return data; // { ok:true, sessionToken, expiresAt, username, isAdmin }
+}
+
+// بيبعت طلب logout فعلي للسيرفر عشان يمسح صف السيشن من شيت Sessions نهائي.
+// من غير النداء ده، السيشن كانت هتفضل صالحة للأبد حتى بعد ما المستخدم "يخرج".
+async function apiLogout(){
+  const s = getSession();
+  if(!s || !s.sessionToken) return;
+  try{
+    checkApiUrl();
+    await fetch(API_URL + '?action=logout&token=' + encodeURIComponent(API_TOKEN) + '&sessionToken=' + encodeURIComponent(s.sessionToken));
+  }catch(e){
+    // حتى لو فشل الاتصال، هنكمل نمسح الجلسة محليًا برضه
+  }
 }
 
 async function apiList(){
@@ -656,7 +682,7 @@ async function apiList(){
     if(data.error === 'unauthorized') forceLoginScreen();
     throw new Error(data.error || 'load failed');
   }
-  return data.families || [];
+  return data; // { ok:true, parents:[...], students:[...] }
 }
 async function apiSaveFamily(family){
   checkApiUrl();
@@ -667,6 +693,7 @@ async function apiSaveFamily(family){
     if(data.error === 'unauthorized') forceLoginScreen();
     throw new Error(data.error || 'save failed');
   }
+  return data;
 }
 async function apiDeleteFamily(id){
   checkApiUrl();
@@ -681,6 +708,7 @@ async function apiDeleteFamily(id){
 
 function forceLoginScreen(){
   clearSession();
+  currentIsAdmin = false;
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   const err = document.getElementById('login-error');
@@ -704,7 +732,7 @@ async function doLogin(){
   btn.disabled = true;
   try{
     const data = await apiLogin(username, password);
-    saveSession(data.sessionToken, data.expiresAt, data.username || username);
+    saveSession(data.sessionToken, data.expiresAt, data.username || username, data.isAdmin);
     pEl.value = '';
     await enterApp();
   }catch(e){
@@ -714,8 +742,10 @@ async function doLogin(){
   }
 }
 
-function doLogout(){
+async function doLogout(){
+  await apiLogout(); // نمسح السيشن من السيرفر الأول
   clearSession();
+  currentIsAdmin = false;
   document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-username').value = '';
@@ -724,28 +754,80 @@ function doLogout(){
 }
 
 async function enterApp(){
+  const session = getSession();
+  currentIsAdmin = !!(session && session.isAdmin);
+
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  addChildRow();
+
+  if(document.getElementById('children-box').children.length === 0){
+    addChildRow();
+  }
   await loadFamilies();
   applyStaticI18n();
-  renderSearch();
+  applyPermissionsUI();
+
+  // المستخدم اللي مش أدمن مالوش تبويب "إضافة أسرة" أصلاً، فبنوجهه للبحث مباشرة
+  if(!currentIsAdmin){
+    await switchView('search');
+  } else {
+    await switchView('add');
+  }
 }
 
+/* ===================== Permissions (admin vs read-only) ===================== */
+function applyPermissionsUI(){
+  const tabAdd = document.getElementById('tab-add');
+  const addActionsRow = document.getElementById('add-actions-row');
+  const addChildBtn = document.getElementById('add-child-btn');
+  const readonlyBanner = document.getElementById('readonly-banner');
+
+  if(tabAdd) tabAdd.style.display = currentIsAdmin ? '' : 'none';
+  if(addActionsRow) addActionsRow.style.display = currentIsAdmin ? '' : 'none';
+  if(addChildBtn) addChildBtn.style.display = currentIsAdmin ? '' : 'none';
+  if(readonlyBanner) readonlyBanner.style.display = currentIsAdmin ? 'none' : 'block';
+}
+
+// بنستخدم رقم متزايد لكل طلب تحميل عشان لو فيه أكتر من طلب شغال في نفس الوقت
+// (مثلاً بسبب دوسة تانية على تبويب البحث قبل ما الأول يخلص)، نتجاهل أي رد
+// قديم يوصل متأخر ونطبّق بس رد آخر طلب اتبعت فعلاً. من غير كده كان ممكن رد
+// قديم يوصل بعد الجديد ويمسح البيانات الصح ويحطّ مكانها بيانات قديمة/فاضية.
+let familiesLoadSeq = 0;
+
 async function loadFamilies(){
+  const seq = ++familiesLoadSeq;
   try{
-    families = await apiList();
+    const data = await apiList();
+    if(seq !== familiesLoadSeq) return; // فيه طلب أحدث لسه ماخلصش أو خلص بعد كده، اتجاهل الرد ده
+    const parents = data.parents || [];
+    const students = data.students || [];
+    // بنجمّع بيانات الأب/الأم مع أولاده في شكل واحد "family" زي ما باقي الكود متوقع،
+    // بس المصدر الحقيقي بقى شيتين منفصلين (Parents + Students) في الباك اند.
+    families = parents.map(p => ({
+      id: p.id,
+      parentName: p.parentName,
+      phone1: p.phone1,
+      phone2: p.phone2,
+      email: p.email,
+      parentNotes: p.parentNotes,
+      updatedAt: p.updatedAt,
+      children: students.filter(s => s.parentId === p.id)
+    }));
   }catch(e){
-    families = [];
+    if(seq !== familiesLoadSeq) return; // طلب قديم فشل بعد ما طلب أحدث نجح - متلمسش البيانات الحالية
+    // ملحوظة: مبنمسحش families هنا خالص. لو الطلب فشل (تأخير في السيرفر أو الإنترنت)،
+    // الأفضل إننا نسيب آخر بيانات ظهرت للمستخدم زي ما هي بدل ما نشيلها فجأة من الشاشة،
+    // وده اللي كان بيسبب إحساس إن البيانات "بتختفي وترجع" كل شوية.
     showToast(t('toastSaveError'));
   }
 }
 // بيحفظ سجل واحد بس (اللي اتعدل)، مش الجدول كله، عشان أجهزة تانية تفضل سليمة
 async function persistFamily(family){
   try{
-    await apiSaveFamily(family);
+    return await apiSaveFamily(family);
   }catch(e){
-    showToast(t('toastSaveError'));
+    if(e.message === 'forbidden') showToast(t('toastForbidden'));
+    else showToast(t('toastSaveError'));
     throw e;
   }
 }
@@ -789,6 +871,7 @@ function addChildRow(data){
   div.className = 'child-row';
   div.id = rowId;
   div.innerHTML = `
+    <input type="hidden" class="c-real-id" value="${escapeAttr(data.id||'')}">
     <div class="child-row-head">
       <span class="row-label">${t('childRowLabel')(box.children.length + 1)}</span>
       <button type="button" class="remove-child" data-row="${rowId}">${t('removeChildBtn')}</button>
@@ -796,31 +879,31 @@ function addChildRow(data){
     <div class="child-fields">
       <div class="field full">
         <label>${t('labelChildName')} <span class="req">*</span></label>
-        <input type="text" class="c-name" value="${data.name||''}" placeholder="${t('phChildName')}">
+        <input type="text" class="c-name" value="${escapeAttr(data.name)}" placeholder="${t('phChildName')}">
       </div>
       <div class="field full">
         <label>${t('labelChildNameEn')}</label>
-        <input type="text" class="c-name-en" value="${data.nameEn||''}" placeholder="${t('phChildNameEn')}">
+        <input type="text" class="c-name-en" value="${escapeAttr(data.nameEn)}" placeholder="${t('phChildNameEn')}">
       </div>
       <div class="field">
         <label>${t('labelStudentId')}</label>
-        <input type="text" class="c-student-id" value="${data.studentId||''}" placeholder="${t('phStudentId')}">
+        <input type="text" class="c-student-id" value="${escapeAttr(data.studentId)}" placeholder="${t('phStudentId')}">
       </div>
       <div class="field">
         <label>${t('labelStudentEmail')}</label>
-        <input type="text" class="c-student-email" value="${data.studentId ? data.studentId+EMAIL_DOMAIN : ''}" readonly dir="ltr" style="background:#F1F5F8;color:var(--text-dim);text-align:left;">
+        <input type="text" class="c-student-email" value="${data.studentId ? escapeAttr(data.studentId)+EMAIL_DOMAIN : ''}" readonly dir="ltr" style="background:#F1F5F8;color:var(--text-dim);text-align:left;">
       </div>
       <div class="field full">
         <label>${t('labelBirthDate')}</label>
         <div class="date-row">
-          <input type="number" class="c-day" value="${data.birthDay||''}" placeholder="${t('phDay')}" min="1" max="31">
-          <input type="number" class="c-month" value="${data.birthMonth||''}" placeholder="${t('phMonth')}" min="1" max="12">
-          <input type="number" class="c-year" value="${data.birthYear||''}" placeholder="${t('phYear')}" min="1990" max="2035">
+          <input type="number" class="c-day" value="${escapeAttr(data.birthDay)}" placeholder="${t('phDay')}" min="1" max="31">
+          <input type="number" class="c-month" value="${escapeAttr(data.birthMonth)}" placeholder="${t('phMonth')}" min="1" max="12">
+          <input type="number" class="c-year" value="${escapeAttr(data.birthYear)}" placeholder="${t('phYear')}" min="1990" max="2035">
         </div>
       </div>
       <div class="field">
         <label>${t('labelChildPhone')}</label>
-        <input type="tel" class="c-phone" value="${data.phone||''}" placeholder="${t('phOptional')}">
+        <input type="tel" class="c-phone" value="${escapeAttr(data.phone)}" placeholder="${t('phOptional')}">
       </div>
       <div class="field">
         <label>${t('labelGrade')}</label>
@@ -844,6 +927,11 @@ function addChildRow(data){
     div.remove();
     refreshAllChildRowsLabels();
   });
+}
+
+function escapeAttr(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
 }
 
 function refreshAllChildRowsLabels(){
@@ -886,8 +974,8 @@ function readChildRows(){
     const name = row.querySelector('.c-name').value.trim();
     if(!name) return;
     const studentId = row.querySelector('.c-student-id').value.trim();
-    list.push({
-      id: uid('S'),
+    const realId = row.querySelector('.c-real-id').value.trim();
+    const child = {
       name,
       nameEn: row.querySelector('.c-name-en').value.trim(),
       studentId,
@@ -898,13 +986,19 @@ function readChildRows(){
       phone: row.querySelector('.c-phone').value.trim(),
       grade: row.querySelector('.c-grade').value,
       notes: row.querySelector('.c-notes').value.trim()
-    });
+    };
+    // بنبعت الـ id الحقيقي بتاع الطالب بس لو كان موجود من قبل (يعني عندنا تعديل)،
+    // عشان الباك اند يقدر يفرق بين "تحديث طالب موجود" و"إضافة طالب جديد" صح.
+    if(realId) child.id = realId;
+    list.push(child);
   });
   return list;
 }
 
 /* ===================== Save family ===================== */
 async function saveFamily(){
+  if(!currentIsAdmin){ showToast(t('toastForbidden')); return; }
+
   const nameEl = document.getElementById('p-name');
   const phone1El = document.getElementById('p-phone1');
   nameEl.classList.remove('field-error');
@@ -921,15 +1015,16 @@ async function saveFamily(){
   const children = readChildRows();
 
   const familyData = {
-    id: editingFamilyId || uid('F'),
     parentName: name,
     phone1,
     phone2: document.getElementById('p-phone2').value.trim(),
     email: document.getElementById('p-email').value.trim(),
     parentNotes: document.getElementById('p-notes').value.trim(),
-    children,
-    updatedAt: Date.now()
+    children
   };
+  // لو بنعدل أسرة موجودة، لازم نبعت الـ id الحقيقي بتاعها عشان الباك اند يحدّثها
+  // بدل ما ينشئ أسرة جديدة. لو أسرة جديدة، مانبعتش id خالص والباك اند هو اللي هيولّده.
+  if(editingFamilyId) familyData.id = editingFamilyId;
 
   try{
     await persistFamily(familyData);
@@ -937,16 +1032,10 @@ async function saveFamily(){
     return; // الرسالة اتظهرت جوه persistFamily
   }
 
-  if(editingFamilyId){
-    const idx = families.findIndex(f=>f.id===editingFamilyId);
-    if(idx>-1) families[idx] = familyData; else families.push(familyData);
-  } else {
-    families.push(familyData);
-  }
-
   showToast(editingFamilyId ? t('toastUpdated') : t('toastSaved'));
   editingFamilyId = null;
   resetForm();
+  await loadFamilies(); // نجيب النسخة النهائية من السيرفر (فيها الـ ids الحقيقية)
   renderSearch();
 }
 
@@ -964,6 +1053,7 @@ function resetForm(){
 
 /* ===================== Edit / delete ===================== */
 function loadFamilyIntoForm(fam){
+  if(!currentIsAdmin) return;
   editingFamilyId = fam.id;
   document.getElementById('p-name').value = fam.parentName || '';
   document.getElementById('p-phone1').value = fam.phone1 || '';
@@ -982,10 +1072,13 @@ function loadFamilyIntoForm(fam){
 }
 
 async function deleteFamily(id){
+  if(!currentIsAdmin){ showToast(t('toastForbidden')); return; }
   try{
     await apiDeleteFamily(id);
   }catch(e){
-    return; // الرسالة اتظهرت جوه apiDeleteFamily
+    if(e.message === 'forbidden') showToast(t('toastForbidden'));
+    else showToast(t('toastSaveError'));
+    return;
   }
   families = families.filter(f=>f.id!==id);
   showToast(t('toastDeleted'));
@@ -1043,12 +1136,18 @@ function renderFamilyCard(fam){
       }).join('')
     : `<div class="no-children">${t('noChildrenText')}</div>`;
 
+  const actionsHtml = currentIsAdmin ? `
+        <div class="family-actions">
+          <button class="icon-btn" onclick="window.__editFamily('${fam.id}')">${t('editBtn')}</button>
+          <button class="icon-btn danger" onclick="window.__deleteFamily('${fam.id}')">${t('deleteBtn')}</button>
+        </div>` : '';
+
   return `
     <div class="family-card">
       <div class="family-head">
         <div class="family-head-main">
           <h3>${escapeHtml(fam.parentName)}</h3>
-          <div class="family-stamp">${fam.id}</div>
+          <div class="family-stamp">${escapeHtml(fam.id)}</div>
           <div class="meta-line">
             <span>📞 ${escapeHtml(fam.phone1)}</span>
             ${fam.phone2 ? `<span>📞 ${escapeHtml(fam.phone2)}</span>` : ''}
@@ -1056,10 +1155,7 @@ function renderFamilyCard(fam){
           </div>
           ${fam.parentNotes ? `<div class="family-note">📝 ${escapeHtml(fam.parentNotes)}</div>` : ''}
         </div>
-        <div class="family-actions">
-          <button class="icon-btn" onclick="window.__editFamily('${fam.id}')">${t('editBtn')}</button>
-          <button class="icon-btn danger" onclick="window.__deleteFamily('${fam.id}')">${t('deleteBtn')}</button>
-        </div>
+        ${actionsHtml}
       </div>
       <div class="children-list">${childrenHtml}</div>
     </div>
@@ -1149,12 +1245,19 @@ function exportToExcel(){
 }
 
 /* ===================== Nav ===================== */
+// مبقناش نجيب البيانات من جوجل شيتس تاني في كل مرة تفتح فيها تبويب البحث -
+// ده كان بيضيف طلب شبكة كامل (بطيء نسبيًا) قبل ما تقدر تكتب حرف واحد في
+// السيرش. دلوقتي البيانات بتتحمّل مرة واحدة بعد الدخول، وبعد كده بس لما
+// تحفظ/تحذف أسرة أو تدوس زرار التحديث (⟳) يدويًا. السيرش نفسه بيفلتر على
+// البيانات المحمّلة عندك بالفعل، فبيبقى فوري من غير أي انتظار للسيرفر.
 async function switchView(view){
+  // مستخدم مش أدمن مالوش تبويب "إضافة"، فمنمنعه يوصله حتى لو حاول ينده الدالة يدوي
+  if(view === 'add' && !currentIsAdmin) view = 'search';
+
   document.querySelectorAll('.tab').forEach(tb=>tb.classList.toggle('active', tb.dataset.view===view));
   document.getElementById('view-add').classList.toggle('active', view==='add');
   document.getElementById('view-search').classList.toggle('active', view==='search');
   if(view==='search'){
-    await loadFamilies(); // يسحب آخر تحديث من الشيت (ممكن يكون جهاز تاني ضاف/عدل)
     renderSearch();
   }
 }
